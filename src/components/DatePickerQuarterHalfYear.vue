@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { inject, ref, watchEffect } from 'vue'
 import { ElPopover } from 'element-plus'
-import type { Component } from 'vue'
+import type { Component, Ref } from 'vue'
 import type { DateModelType } from 'element-plus'
 import DatePickerPanelWrapper from './DatePickerPanelWrapper.vue'
 import DatePickerPanel from './DatePickerPanel.vue'
@@ -10,55 +10,33 @@ import DatePickerInput from './DatePickerInput.vue'
 import useDatePickerEnhanced from './useDatePickerEnhanced'
 
 interface Props {
+  type: 'quarteryear' | 'halfyear'
   modelValue: DateModelType
-  disabledDate: (date: Date) => boolean
+  placeholder: string
   popperClass: string
   prefixIcon: Component
-  placeholder: string
-  type:
-  | 'quarteryear'
-  | 'halfyear'
+  disabledDate: (date: Date) => boolean
 }
 
 const props = defineProps<Props>()
 
-const emits = defineEmits(['update:modelValue'])
+const emits = defineEmits([
+  'update:modelValue',
+])
+
+// 0 表示点击一次，1 表示点击两次(为了对齐range的逻辑)
+const itemClickTimes = ref(-1)
 
 const {
   popover,
   inputValue,
-  inputPlaceholder,
-  inputValueUpdate,
   panelTitle,
   panelItems,
   panelPrevClick,
   panelNextClick,
   panelItemClick,
   panelTitleClick,
-} = useDatePickerEnhanced(props, emits)
-
-const scopedId: any = inject('scopedId')
-const datepickerHalfQuarterYearRef = ref<any>(null)
-watchEffect(() => {
-  const popper = datepickerHalfQuarterYearRef.value?.popperRef?.contentRef as HTMLDivElement
-  popper?.setAttribute?.(`${String(scopedId.value)}`, '')
-})
-
-const InputRef = ref<InstanceType<typeof DatePickerInput> | null>(null)
-const panelWrapperRef = ref<InstanceType<typeof DatePickerPanelWrapper> | null>(null)
-let wantClose = false
-
-watchEffect(() => {
-  if (InputRef.value?.focus || panelWrapperRef.value?.focus) {
-    wantClose = false
-    popover.visible = true
-  } else {
-    wantClose = true
-    setTimeout(() => {
-      wantClose && (popover.visible = false) && (wantClose = false)
-    }, 100)
-  }
-})
+} = useDatePickerEnhanced(props as any, emits, itemClickTimes)
 </script>
 
 <script lang="ts">
@@ -69,29 +47,20 @@ export default {
 
 <template>
   <ElPopover
-    ref="datepickerHalfQuarterYearRef"
-    :visible="popover.visible"
-    :trigger="popover.trigger"
-    :placement="popover.placement"
-    :hide-after="popover.hideAfter"
-    :transition="popover.transition"
-    :popper-class="popover.popperClass"
     width="auto"
+    v-bind="popover"
+    @update:visible="popover.visible = $event"
   >
     <template #reference>
       <DatePickerInput
-        ref="InputRef"
-        :value="inputValue"
-        :placeholder="inputPlaceholder"
+        v-model:modelValue="inputValue"
+        :placeholder="props.placeholder"
         :prefix-icon="props.prefixIcon"
-        @update:value="inputValueUpdate"
       />
     </template>
 
     <template #default>
-      <DatePickerPanelWrapper
-        ref="panelWrapperRef"
-      >
+      <DatePickerPanelWrapper>
         <template #default>
           <DatePickerPanel
             :title="panelTitle"
